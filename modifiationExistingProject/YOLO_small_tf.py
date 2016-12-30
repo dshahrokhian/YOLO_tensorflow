@@ -20,6 +20,9 @@ class YOLO_TF:
 	num_box = 2
 	grid_size = 7
 	classes =  ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train","tvmonitor"]
+	keep_prob = tf.placeholder(tf.float32)
+	lambdacoord = 5
+	lambdanoobj = 0.5
 
 	w_img = 640
 	h_img = 480
@@ -73,33 +76,33 @@ class YOLO_TF:
 		self.conv_28 = self.conv_layer(28,self.conv_27,1024,3,1)
 		self.fc_29 = self.fc_layer(29,self.conv_28,512,flat=True,linear=False)
 		self.fc_30 = self.fc_layer(30,self.fc_29,4096,flat=False,linear=False)
-		#skip dropout_31
-		self.fc_32 = self.fc_layer(32,self.fc_30,1470,flat=False,linear=True)
+		self.drop_31 = self.dropout(31,self.fc_30)
+		self.fc_32 = self.fc_layer(32,self.drop_31,1470,flat=False,linear=True)
 		self.sess = tf.Session()
 		self.sess.run(tf.initialize_all_variables())
 		self.saver = tf.train.Saver()
 		self.saver.restore(self.sess,self.weights_file)
 		if self.disp_console : print "Loading complete!" + '\n'
 
-	def conv_layer(self,idx,inputs,filters,size,stride):
+	def conv_layer(self,idx,inputs,filters,size,stride,trainable=False):
 		channels = inputs.get_shape()[3]
-		weight = tf.Variable(tf.truncated_normal([size,size,int(channels),filters], stddev=0.1))
-		biases = tf.Variable(tf.constant(0.1, shape=[filters]))
+		weight = tf.Variable(tf.truncated_normal([size,size,int(channels),filters], stddev=0.1),trainable=trainable)
+		biases = tf.Variable(tf.constant(0.1, shape=[filters]),trainable=trainable)
 
 		pad_size = size//2
 		pad_mat = np.array([[0,0],[pad_size,pad_size],[pad_size,pad_size],[0,0]])
 		inputs_pad = tf.pad(inputs,pad_mat)
 
-		conv = tf.nn.conv2d(inputs_pad, weight, strides=[1, stride, stride, 1], padding='VALID',name=str(idx)+'_conv')	
+		conv = tf.nn.conv2d(inputs_pad, weight, strides=[1, stride, stride, 1], padding='VALID',name=str(idx)+'_conv')
 		conv_biased = tf.add(conv,biases,name=str(idx)+'_conv_biased')	
 		if self.disp_console : print '    Layer  %d : Type = Conv, Size = %d * %d, Stride = %d, Filters = %d, Input channels = %d' % (idx,size,size,stride,filters,int(channels))
-		return tf.maximum(self.alpha*conv_biased,conv_biased,name=str(idx)+'_leaky_relu')
+		return tf.maximum(tf.mul(self.alpha,conv_biased),conv_biased,name=str(idx)+'_leaky_relu')
 
 	def pooling_layer(self,idx,inputs,size,stride):
 		if self.disp_console : print '    Layer  %d : Type = Pool, Size = %d * %d, Stride = %d' % (idx,size,size,stride)
 		return tf.nn.max_pool(inputs, ksize=[1, size, size, 1],strides=[1, stride, stride, 1], padding='SAME',name=str(idx)+'_pool')
 
-	def fc_layer(self,idx,inputs,hiddens,flat = False,linear = False):
+	def fc_layer(self,idx,inputs,hiddens,flat = False,linear = False,trainable=False):
 		input_shape = inputs.get_shape().as_list()		
 		if flat:
 			dim = input_shape[1]*input_shape[2]*input_shape[3]
@@ -108,12 +111,16 @@ class YOLO_TF:
 		else:
 			dim = input_shape[1]
 			inputs_processed = inputs
-		weight = tf.Variable(tf.truncated_normal([dim,hiddens], stddev=0.1))
-		biases = tf.Variable(tf.constant(0.1, shape=[hiddens]))	
+		weight = tf.Variable(tf.truncated_normal([dim,hiddens], stddev=0.1),trainable=trainable)
+		biases = tf.Variable(tf.constant(0.1, shape=[hiddens]),trainable=trainable)
 		if self.disp_console : print '    Layer  %d : Type = Full, Hidden = %d, Input dimension = %d, Flat = %d, Activation = %d' % (idx,hiddens,int(dim),int(flat),1-int(linear))	
 		if linear : return tf.add(tf.matmul(inputs_processed,weight),biases,name=str(idx)+'_fc')
 		ip = tf.add(tf.matmul(inputs_processed,weight),biases)
-		return tf.maximum(self.alpha*ip,ip,name=str(idx)+'_fc')
+		return tf.maximum(tf.mul(self.alpha,ip),ip,name=str(idx)+'_fc')
+
+	def dropout(self,idx,inputs):
+		if self.disp_console: print '    Layer  %d : Type = DropOut' % (idx)
+		return tf.nn.dropout(inputs,keep_prob=self.keep_prob)
 
 	def detect_from_cvmat(self,img):
 		s = time.time()
@@ -123,7 +130,7 @@ class YOLO_TF:
 		img_resized_np = np.asarray( img_RGB )
 		inputs = np.zeros((1,448,448,3),dtype='float32')
 		inputs[0] = (img_resized_np/255.0)*2.0-1.0
-		in_dict = {self.x: inputs}
+		in_dict = {self.x: inputs,self.keep_prob:1.0}
 		net_output = self.sess.run(self.fc_32,feed_dict=in_dict)
 		self.result = self.interpret_output(net_output[0])
 		self.show_results(img,self.result)
@@ -135,22 +142,6 @@ class YOLO_TF:
 		img = cv2.imread(filename)
 		#img = misc.imread(filename)
 		self.detect_from_cvmat(img)
-
-	def detect_from_crop_sample(self):
-		self.w_img = 640
-		self.h_img = 420
-		f = np.array(open('person_crop.txt','r').readlines(),dtype='float32')
-		inputs = np.zeros((1,448,448,3),dtype='float32')
-		for c in range(3):
-			for y in range(448):
-				for x in range(448):
-					inputs[0,y,x,c] = f[c*448*448+y*448+x]
-
-		in_dict = {self.x: inputs}
-		net_output = self.sess.run(self.fc_32,feed_dict=in_dict)
-		self.boxes, self.probs = self.interpret_output(net_output[0])
-		img = cv2.imread('person.jpg')
-		self.show_results(self.boxes,img)
 
 	def interpret_output(self,output):
 		probs = np.zeros((7,7,2,20))
@@ -236,6 +227,35 @@ class YOLO_TF:
 		return intersection / (box1[2]*box1[3] + box2[2]*box2[3] - intersection)
 
 	def training(self): #TODO add training function!
+		class_probs = tf.reshape(output[0:980],(7,7,20))
+		scales = tf.reshape(output[980:1078],(7,7,2))
+		boxes = tf.reshape(output[1078:],(7,7,2,4))
+		offset = tf.constant(np.transpose(np.reshape(np.array([np.arange(7)]*14),(2,7,7)),(1,2,0)))
+
+		boxes0 = tf.mul(tf.div(tf.add(boxes[:, :, :, 1],offset),7.0),self.w_img)
+		boxes1 = tf.mul(tf.div(tf.add(boxes[:, :, :, 1],tf.transpose(offset, (1, 0, 2))),7.0),self.h_img)
+		boxes2bis = tf.div(boxes[:, :, :, 2], 7.0)
+		boxes2 = tf.mul(tf.mul(boxes2bis,boxes2bis),self.w_img)
+		boxes3 = tf.mul(tf.mul(boxes[:, :, :, 3], boxes[:, :, :, 3]),self.h_img)
+		probs = tf.stack(tf.mul(class_probs,scales[1]),tf.mul(class_probs,scales[2])) #TODO need to check
+
+		# TODO need to create x_, y_, w_, h_, C_, p_
+		subX = tf.sub(boxes0,x_)
+		subY = tf.sub(boxes1,y_)
+		subW = tf.sub(tf.sqrt(boxes2),tf.sqrt(w_))
+		subH = tf.sub(tf.sqrt(boxes3),tf.sqrt(h_))
+		subC = tf.sub(C,C_) #TODO need to finish
+		subP = tf.sub(probs,p_) #TODO need to check
+		# TODO need to create obj and objI
+		loss = tf.add_n((tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj,tf.mul(subX,subX)))),
+					  	tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subY,subY)))),
+					  	tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subW,subW)))),
+					 	tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subH,subH)))),
+					  	tf.reduce_sum(tf.mul(obj, tf.mul(subC,subC))),
+						tf.mul(self.lambdanoobj, tf.reduce_sum(tf.mul(obj, tf.mul(subC,subC)))),
+						tf.mul(objI,tf.reduce_sum(tf.mul(subP,subP)))))
+		train_step = tf.train.AdamOptimizer(0.005).minimize(loss)
+		self.sess.run(train_step) # TODO need to finish
 		return None
 
 	
