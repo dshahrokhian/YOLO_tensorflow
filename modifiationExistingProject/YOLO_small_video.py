@@ -147,7 +147,7 @@ class YOLO_TF:
     def detect_from_file(self, filename):
         if self.disp_console: print 'Detect from ' + filename
 
-        input = cv2.Videoinputture(filename)
+        input = cv2.VideoCapture(filename)
         while not input.isOpened():
             input = cv2.VideoCapture(filename)
             cv2.waitKey(1000)
