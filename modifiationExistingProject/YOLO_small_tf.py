@@ -227,6 +227,7 @@ class YOLO_TF:
 		return intersection / (box1[2]*box1[3] + box2[2]*box2[3] - intersection)
 
 	def training(self): #TODO add training function!
+		output = self.fc_32
 		class_probs = tf.reshape(output[0:980],(7,7,20))
 		scales = tf.reshape(output[980:1078],(7,7,2))
 		boxes = tf.reshape(output[1078:],(7,7,2,4))
@@ -237,15 +238,15 @@ class YOLO_TF:
 		boxes2bis = tf.div(boxes[:, :, :, 2], 7.0)
 		boxes2 = tf.mul(tf.mul(boxes2bis,boxes2bis),self.w_img)
 		boxes3 = tf.mul(tf.mul(boxes[:, :, :, 3], boxes[:, :, :, 3]),self.h_img)
-		probs = tf.stack(tf.mul(class_probs,scales[1]),tf.mul(class_probs,scales[2])) #TODO need to check
+		probs = tf.stack(tf.mul(class_probs,scales[1]),tf.mul(class_probs,scales[2]))
 
 		# TODO need to create x_, y_, w_, h_, C_, p_
 		subX = tf.sub(boxes0,x_)
 		subY = tf.sub(boxes1,y_)
 		subW = tf.sub(tf.sqrt(boxes2),tf.sqrt(w_))
 		subH = tf.sub(tf.sqrt(boxes3),tf.sqrt(h_))
-		subC = tf.sub(C,C_) #TODO need to finish
-		subP = tf.sub(probs,p_) #TODO need to check
+		subC = tf.sub(probs,C_)
+		subP = tf.sub(class_probs,p_)
 		# TODO need to create obj and objI
 		loss = tf.add_n((tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj,tf.mul(subX,subX)))),
 					  	tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subY,subY)))),
@@ -253,9 +254,29 @@ class YOLO_TF:
 					 	tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subH,subH)))),
 					  	tf.reduce_sum(tf.mul(obj, tf.mul(subC,subC))),
 						tf.mul(self.lambdanoobj, tf.reduce_sum(tf.mul(obj, tf.mul(subC,subC)))),
-						tf.mul(objI,tf.reduce_sum(tf.mul(subP,subP)))))
-		train_step = tf.train.AdamOptimizer(0.005).minimize(loss)
-		self.sess.run(train_step) # TODO need to finish
+						 tf.reduce_sum(tf.mul(objI,tf.reduce_sum(tf.mul(subP,subP),axis=2,keep_dims=True)))))
+		global_step = tf.Variable(0, trainable=False)
+		starter_learning_rate = 0.001
+		decay = 0.0005
+		end_learning_rate = 0.01
+		def f1():
+			return tf.train.polynomial_decay(starter_learning_rate, global_step,decay, end_learning_rate= end_learning_rate, power=1.0)
+		def f2():
+			global_step.assign_add(1)
+			return tf.constant(0.01)
+		def f3():
+			global_step.assign_add(1)
+			return tf.constant(0.001)
+		def f4():
+			global_step.assign_add(1)
+			return tf.constant(0.0001)
+		lr=tf.case({tf.less_equal(global_step,18):f1,
+				 tf.logical_and(tf.greater(global_step,18),tf.less_equal(global_step,93)):f2,
+				 tf.logical_and(tf.greater(global_step,93),tf.less_equal(global_step,123)):f3,
+				 tf.logical_and(tf.greater(global_step,123)):f4},exclusive=True)
+		train_step = tf.train.MomentumOptimizer(learning_rate=lr,momentum=0.9)
+		in_dict = {self.x:none ,self.keep_prob:0.5} #TODO need to create the loop for the training and test
+		self.sess.run(train_step,in_dict)
 		return None
 
 	
