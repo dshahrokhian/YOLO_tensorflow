@@ -5,6 +5,11 @@ import time
 import sys
 
 class YOLO_TF:
+	'''
+    Class representing the operations requited for building the YOLO neural network.
+    '''
+
+    # Control variables
 	fromfile = None
 	tofile_img = 'test/output.jpg'
 	tofile_txt = 'test/output.txt'
@@ -259,17 +264,23 @@ class YOLO_TF:
 		starter_learning_rate = 0.001
 		decay = 0.0005
 		end_learning_rate = 0.01
+
+		# TODO add explanation of each function, or change name to something clear
 		def f1():
 			return tf.train.polynomial_decay(starter_learning_rate, global_step,decay, end_learning_rate= end_learning_rate, power=1.0)
+
 		def f2():
 			global_step.assign_add(1)
 			return tf.constant(0.01)
+
 		def f3():
 			global_step.assign_add(1)
 			return tf.constant(0.001)
+
 		def f4():
 			global_step.assign_add(1)
 			return tf.constant(0.0001)
+
 		lr=tf.case({tf.less_equal(global_step,18):f1,
 				 tf.logical_and(tf.greater(global_step,18),tf.less_equal(global_step,93)):f2,
 				 tf.logical_and(tf.greater(global_step,93),tf.less_equal(global_step,123)):f3,
@@ -279,13 +290,6 @@ class YOLO_TF:
 		self.sess.run(train_step,in_dict)
 		return None
 
-	
-			
-
-def main(argvs):
-	yolo = YOLO_TF(argvs)
-	cv2.waitKey(1000)
-
-
 if __name__=='__main__':	
-	main(sys.argv)
+	yolo = YOLO_TF(sys.argv)
+	cv2.waitKey(1000)
