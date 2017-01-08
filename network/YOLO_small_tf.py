@@ -25,9 +25,12 @@ class YOLO_TF:
 	num_box = 2
 	grid_size = 7
 	classes =  ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train","tvmonitor"]
+	#training variaible
+	training = False
 	keep_prob = tf.placeholder(tf.float32)
 	lambdacoord = 5
 	lambdanoobj = 0.5
+	imageDiretory = none
 
 	w_img = 640
 	h_img = 480
@@ -35,9 +38,14 @@ class YOLO_TF:
 	def __init__(self,argvs = []):
 		self.argv_parser(argvs)
 		self.build_networks()
+		if self.training :
+			self.build_training()
+			self.train()
 		if self.fromfile is not None: self.detect_from_file(self.fromfile)
+
 	def argv_parser(self,argvs):
 		for i in range(1,len(argvs),2):
+			if argvs[i] == '-train' : self.imageDiretory =argvs[i+1]; self.training = True;
 			if argvs[i] == '-fromfile' : self.fromfile = argvs[i+1]
 			if argvs[i] == '-tofile_img' : self.tofile_img = argvs[i+1] ; self.filewrite_img = True
 			if argvs[i] == '-tofile_txt' : self.tofile_txt = argvs[i+1] ; self.filewrite_txt = True
@@ -231,34 +239,42 @@ class YOLO_TF:
 		else : intersection =  tb*lr
 		return intersection / (box1[2]*box1[3] + box2[2]*box2[3] - intersection)
 
-	def training(self): #TODO add training function!
+	def build_training(self): #TODO add training function!
 		output = self.fc_32
 		class_probs = tf.reshape(output[0:980],(7,7,20))
 		scales = tf.reshape(output[980:1078],(7,7,2))
 		boxes = tf.reshape(output[1078:],(7,7,2,4))
-		offset = tf.constant(np.transpose(np.reshape(np.array([np.arange(7)]*14),(2,7,7)),(1,2,0)))
 
-		boxes0 = tf.mul(tf.div(tf.add(boxes[:, :, :, 1],offset),7.0),self.w_img)
-		boxes1 = tf.mul(tf.div(tf.add(boxes[:, :, :, 1],tf.transpose(offset, (1, 0, 2))),7.0),self.h_img)
-		boxes2bis = tf.div(boxes[:, :, :, 2], 7.0)
-		boxes2 = tf.mul(tf.mul(boxes2bis,boxes2bis),self.w_img)
-		boxes3 = tf.mul(tf.mul(boxes[:, :, :, 3], boxes[:, :, :, 3]),self.h_img)
+		boxes0 =boxes[:, :, :, 0]
+		boxes1 = boxes[:, :, :, 1]
+		boxes2 = boxes[:, :, :, 2]
+		boxes3 =  boxes[:, :, :, 3]
 		probs = tf.stack(tf.mul(class_probs,scales[1]),tf.mul(class_probs,scales[2]))
 
-		# TODO need to create x_, y_, w_, h_, C_, p_
+		#the label of image
+		x_=tf.placeholder(tf.float32, [7,7,2]) #the first dimension (None) will index the images
+		y_=tf.placeholder(tf.float32, [7,7,2])
+		w_=tf.placeholder(tf.float32, [7,7,2])
+		h_=tf.placeholder(tf.float32, [7,7,2])
+		C_=tf.placeholder(tf.float32, [7,7,2])
+		p_=tf.placeholder(tf.float32, [7,7,20])
+		obj =tf.placeholder(tf.float32, [7,7,2])
+		objI = tf.placeholder(tf.float32, [7, 7])
+		noobj =tf.placeholder(tf.float32, [7, 7,2])
+
+		#loss funtion
 		subX = tf.sub(boxes0,x_)
 		subY = tf.sub(boxes1,y_)
 		subW = tf.sub(tf.sqrt(boxes2),tf.sqrt(w_))
 		subH = tf.sub(tf.sqrt(boxes3),tf.sqrt(h_))
 		subC = tf.sub(probs,C_)
 		subP = tf.sub(class_probs,p_)
-		# TODO need to create obj and objI
 		loss = tf.add_n((tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj,tf.mul(subX,subX)))),
 					  	tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subY,subY)))),
 					  	tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subW,subW)))),
 					 	tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subH,subH)))),
 					  	tf.reduce_sum(tf.mul(obj, tf.mul(subC,subC))),
-						tf.mul(self.lambdanoobj, tf.reduce_sum(tf.mul(obj, tf.mul(subC,subC)))),
+						tf.mul(self.lambdanoobj, tf.reduce_sum(tf.mul(noobj, tf.mul(subC,subC)))),
 						 tf.reduce_sum(tf.mul(objI,tf.reduce_sum(tf.mul(subP,subP),axis=2,keep_dims=True)))))
 		global_step = tf.Variable(0, trainable=False)
 		starter_learning_rate = 0.001
@@ -285,10 +301,49 @@ class YOLO_TF:
 				 tf.logical_and(tf.greater(global_step,18),tf.less_equal(global_step,93)):lr2,
 				 tf.logical_and(tf.greater(global_step,93),tf.less_equal(global_step,123)):lr3,
 				 tf.logical_and(tf.greater(global_step,123)):lr4},exclusive=True)
-		train_step = tf.train.MomentumOptimizer(learning_rate=lr,momentum=0.9)
+		sefl.train_step = tf.train.MomentumOptimizer(learning_rate=lr,momentum=0.9)
+		self.sess = tf.Session()
+		self.sess.run(tf.initialize_all_variables())
+		self.saver = tf.train.Saver()
+		self.saver.restore(self.sess, self.weights_file)
+
+	def train_step(self,i, update_test_data, update_train_data):
+
 		in_dict = {self.x:none ,self.keep_prob:0.5} #TODO need to create the loop for the training and test
-		self.sess.run(train_step,in_dict)
-		return None
+		self.sess.run(self.train_step,in_dict)
+
+		train_l = []
+		test_l = []
+
+		if update_train_data:
+			l = sess.run([loss], feed_dict={in_dict})
+			train_l.append(l)
+
+		if update_test_data:
+			l = sess.run([loss],
+							feed_dict={in_dict})
+			print("\r", i, "loss : ", l)
+			test_l.append(l)
+
+		return (train_l, test_l)
+
+	def train(self):
+		train_l = []
+		test_l = []
+
+		training_iter = 10000
+		epoch_size = 100
+		for i in range(training_iter):
+			test = False
+			if i % epoch_size == 0:
+				test = True
+			l, tl = training_step(i, test, test)
+			train_l += l
+			test_l += tl
+		print("train loss")
+		print(train_l)
+		print("test loss")
+		print(test_l)
 
 if __name__=='__main__':	
 	yolo = YOLO_TF(sys.argv)
