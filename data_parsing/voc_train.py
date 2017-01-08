@@ -43,9 +43,9 @@ def _getXYWHC(objects, img_width, img_height):
         cell_x, cell_y = getCell([center_x,center_y], img_width, img_height)
         
         if (grid[cell_x][cell_y] is None):
-            grid[cell_x][cell_y] = [center_x, center_y, width, height, obj_class]
+            grid[cell_x][cell_y] = [[center_x, center_y, width, height, obj_class]]
         else:
-            grid[cell_x][cell_y] = [grid[cell_x][cell_y], [center_x, center_y, width, height, obj_class]]
+            grid[cell_x][cell_y] = [grid[cell_x][cell_y][0], [center_x, center_y, width, height, obj_class]]
 
     return grid
 
@@ -53,7 +53,7 @@ def getCell(point, width, height):
     '''
     Determines where a point falls within the (grid_size)x(grid_size) grid 
     '''
-    row = math.floor(point[0] / width * grid_size)
-    col = math.floor(point[1] / height * grid_size)
+    row = int(math.floor(point[0] / width * grid_size))
+    col = int(math.floor(point[1] / height * grid_size))
 
     return [row,col]
