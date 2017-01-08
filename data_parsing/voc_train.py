@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 ==========================================
-Operations required for training a ConvNet with the VOC dataset.
+Utils required for training a ConvNet with the VOC dataset.
 ==========================================
 """
 # Author: Daniyal Shahrokhian <daniyal@kth.se>
 
 import voc_utils as voc
 import math
-import numpy as np
 
 grid_size = 7
 
@@ -20,11 +19,11 @@ def get_training_data(img_filename):
     
     objects = annotation.find_all("object")
     
-    centers = _getXYWHC(objects, img_width, img_height)
+    return _getXYWHC(objects, img_width, img_height)
     
 def _getXYWHC(objects, img_width, img_height):
     '''
-    Return a (grid_size)x(grid_size) grid with the center, width and height of the objects
+    Return a (grid_size)x(grid_size) grid with the center, width, height and class of the objects
     '''
     grid = [[None for x in range(grid_size)] for x in range(grid_size)]
     
@@ -43,11 +42,14 @@ def _getXYWHC(objects, img_width, img_height):
                 
         cell_x, cell_y = getCell([center_x,center_y], img_width, img_height)
         grid[cell_x][cell_y] = [center_x, center_y, width, height, obj_class]
-    print(grid)
+
     return grid
 
-def _getP(self):
-    pass
+def training(category):
+    img_filenames = voc.imgs_from_category_as_list(category, "train")
+    
+    for img_filename in img_filenames:
+        
 
 def getCell(point, width, height):
     '''
@@ -59,4 +61,5 @@ def getCell(point, width, height):
     return [row,col]
 
 if __name__ == '__main__':
-    get_training_data("2007_000027")
+    #get_training_data("2007_000027")
+    training("aeroplane")
