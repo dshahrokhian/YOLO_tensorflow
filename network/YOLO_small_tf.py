@@ -265,26 +265,26 @@ class YOLO_TF:
 		decay = 0.0005
 		end_learning_rate = 0.01
 
-		# TODO add explanation of each function, or change name to something clear
-		def f1():
+		# Different case of learning rate
+		def lr1():
 			return tf.train.polynomial_decay(starter_learning_rate, global_step,decay, end_learning_rate= end_learning_rate, power=1.0)
 
-		def f2():
+		def lr2():
 			global_step.assign_add(1)
 			return tf.constant(0.01)
 
-		def f3():
+		def lr3():
 			global_step.assign_add(1)
 			return tf.constant(0.001)
 
-		def f4():
+		def lr4():
 			global_step.assign_add(1)
 			return tf.constant(0.0001)
 
-		lr=tf.case({tf.less_equal(global_step,18):f1,
-				 tf.logical_and(tf.greater(global_step,18),tf.less_equal(global_step,93)):f2,
-				 tf.logical_and(tf.greater(global_step,93),tf.less_equal(global_step,123)):f3,
-				 tf.logical_and(tf.greater(global_step,123)):f4},exclusive=True)
+		lr=tf.case({tf.less_equal(global_step,18):lr1,
+				 tf.logical_and(tf.greater(global_step,18),tf.less_equal(global_step,93)):lr2,
+				 tf.logical_and(tf.greater(global_step,93),tf.less_equal(global_step,123)):lr3,
+				 tf.logical_and(tf.greater(global_step,123)):lr4},exclusive=True)
 		train_step = tf.train.MomentumOptimizer(learning_rate=lr,momentum=0.9)
 		in_dict = {self.x:none ,self.keep_prob:0.5} #TODO need to create the loop for the training and test
 		self.sess.run(train_step,in_dict)
