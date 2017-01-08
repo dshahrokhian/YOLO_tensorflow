@@ -45,12 +45,6 @@ def _getXYWHC(objects, img_width, img_height):
 
     return grid
 
-def training(category):
-    img_filenames = voc.imgs_from_category_as_list(category, "train")
-    
-    for img_filename in img_filenames:
-        
-
 def getCell(point, width, height):
     '''
     Determines where a point falls within the (grid_size)x(grid_size) grid 
@@ -62,4 +56,4 @@ def getCell(point, width, height):
 
 if __name__ == '__main__':
     #get_training_data("2007_000027")
-    training("aeroplane")
+    #training("aeroplane")
