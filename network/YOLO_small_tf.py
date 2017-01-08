@@ -31,7 +31,7 @@ class YOLO_TF:
     # training variaible
     training = False
     keep_prob = tf.placeholder(tf.float32)
-    lambdacoord = 5
+    lambdacoord = 5.0
     lambdanoobj = 0.5
 
     w_img = 640
@@ -96,7 +96,7 @@ class YOLO_TF:
         self.fc_29 = self.fc_layer(29, self.conv_28, 512, flat=True, linear=False)
         self.fc_30 = self.fc_layer(30, self.fc_29, 4096, flat=False, linear=False)
         self.drop_31 = self.dropout(31, self.fc_30)
-        self.fc_32 = self.fc_layer(32, self.drop_31, 1470, flat=False, linear=True)
+        self.fc_32 = self.fc_layer(32, self.drop_31, 1470, flat=False, linear=True,trainable=True)
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
@@ -261,151 +261,111 @@ class YOLO_TF:
         return intersection / (box1[2] * box1[3] + box2[2] * box2[3] - intersection)
 
 
-def build_training(self):  # TODO add training function!
-    output = self.fc_32
-    class_probs = tf.reshape(output[0:980], (7, 7, 20))
-    scales = tf.reshape(output[980:1078], (7, 7, 2))
-    boxes = tf.reshape(output[1078:], (7, 7, 2, 4))
+    def build_training(self):  # TODO add training function!
+        output = self.fc_32[0]
+        class_probs = tf.reshape(output[0:980], (7, 7, 20))
+        scales = tf.reshape(output[980:1078], (7, 7, 2))
+        boxes = tf.reshape(output[1078:], (7, 7, 2, 4))
 
-    boxes0 = boxes[:, :, :, 0]
-    boxes1 = boxes[:, :, :, 1]
-    boxes2 = boxes[:, :, :, 2]
-    boxes3 = boxes[:, :, :, 3]
-    stack1 = tf.stack(tf.multiply(class_probs[:, :, 0], scales[:, :, 1]),
-                      tf.multiply(class_probs[:, :, 1], scales[:, :, 1]))
-    stack2 = tf.stack(tf.multiply(class_probs[:, :, 2], scales[:, :, 1]), stack1)
-    stack3 = tf.stack(tf.multiply(class_probs[:, :, 3], scales[:, :, 1]), stack2)
-    stack4 = tf.stack(tf.multiply(class_probs[:, :, 4], scales[:, :, 1]), stack3)
-    stack5 = tf.stack(tf.multiply(class_probs[:, :, 5], scales[:, :, 1]), stack4)
-    stack6 = tf.stack(tf.multiply(class_probs[:, :, 6], scales[:, :, 1]), stack5)
-    stack7 = tf.stack(tf.multiply(class_probs[:, :, 7], scales[:, :, 1]), stack6)
-    stack8 = tf.stack(tf.multiply(class_probs[:, :, 8], scales[:, :, 1]), stack7)
-    stack9 = tf.stack(tf.multiply(class_probs[:, :, 9], scales[:, :, 1]), stack8)
-    stack10 = tf.stack(tf.multiply(class_probs[:, :, 10], scales[:, :, 1]), stack9)
-    stack11 = tf.stack(tf.multiply(class_probs[:, :, 11], scales[:, :, 1]), stack10)
-    stack12 = tf.stack(tf.multiply(class_probs[:, :, 12], scales[:, :, 1]), stack11)
-    stack13 = tf.stack(tf.multiply(class_probs[:, :, 13], scales[:, :, 1]), stack12)
-    stack14 = tf.stack(tf.multiply(class_probs[:, :, 14], scales[:, :, 1]), stack13)
-    stack15 = tf.stack(tf.multiply(class_probs[:, :, 15], scales[:, :, 1]), stack14)
-    stack16 = tf.stack(tf.multiply(class_probs[:, :, 16], scales[:, :, 1]), stack15)
-    stack17 = tf.stack(tf.multiply(class_probs[:, :, 17], scales[:, :, 1]), stack16)
-    stack18 = tf.stack(tf.multiply(class_probs[:, :, 18], scales[:, :, 1]), stack17)
-    stack19 = tf.stack(tf.multiply(class_probs[:, :, 19], scales[:, :, 1]), stack18)
-    stack20 = tf.stack(tf.multiply(class_probs[:, :, 0], scales[:, :, 0]), stack19)
-    stack21 = tf.stack(tf.multiply(class_probs[:, :, 1], scales[:, :, 0]), stack20)
-    stack22 = tf.stack(tf.multiply(class_probs[:, :, 2], scales[:, :, 0]), stack21)
-    stack23 = tf.stack(tf.multiply(class_probs[:, :, 3], scales[:, :, 0]), stack22)
-    stack24 = tf.stack(tf.multiply(class_probs[:, :, 4], scales[:, :, 0]), stack23)
-    stack25 = tf.stack(tf.multiply(class_probs[:, :, 5], scales[:, :, 0]), stack24)
-    stack26 = tf.stack(tf.multiply(class_probs[:, :, 6], scales[:, :, 0]), stack25)
-    stack27 = tf.stack(tf.multiply(class_probs[:, :, 7], scales[:, :, 0]), stack26)
-    stack28 = tf.stack(tf.multiply(class_probs[:, :, 8], scales[:, :, 0]), stack27)
-    stack29 = tf.stack(tf.multiply(class_probs[:, :, 9], scales[:, :, 0]), stack28)
-    stack30 = tf.stack(tf.multiply(class_probs[:, :, 10], scales[:, :, 0]), stack29)
-    stack31 = tf.stack(tf.multiply(class_probs[:, :, 11], scales[:, :, 0]), stack30)
-    stack32 = tf.stack(tf.multiply(class_probs[:, :, 12], scales[:, :, 0]), stack31)
-    stack33 = tf.stack(tf.multiply(class_probs[:, :, 13], scales[:, :, 0]), stack32)
-    stack34 = tf.stack(tf.multiply(class_probs[:, :, 14], scales[:, :, 0]), stack33)
-    stack35 = tf.stack(tf.multiply(class_probs[:, :, 15], scales[:, :, 0]), stack34)
-    stack36 = tf.stack(tf.multiply(class_probs[:, :, 16], scales[:, :, 0]), stack35)
-    stack37 = tf.stack(tf.multiply(class_probs[:, :, 17], scales[:, :, 0]), stack36)
-    stack38 = tf.stack(tf.multiply(class_probs[:, :, 18], scales[:, :, 0]), stack37)
-    probs = tf.stack(tf.multiply(class_probs[:, :, 19], scales[:, :, 0]), stack38)
-    # the label of image
-    x_ = tf.placeholder(tf.float32, [7, 7, 2])  # the first dimension (None) will index the images
-    y_ = tf.placeholder(tf.float32, [7, 7, 2])
-    w_ = tf.placeholder(tf.float32, [7, 7, 2])
-    h_ = tf.placeholder(tf.float32, [7, 7, 2])
-    C_ = tf.placeholder(tf.float32, [7, 7, 2])
-    p_ = tf.placeholder(tf.float32, [7, 7, 20])
-    obj = tf.placeholder(tf.float32, [7, 7, 2])
-    objI = tf.placeholder(tf.float32, [7, 7])
-    noobj = tf.placeholder(tf.float32, [7, 7, 2])
+        boxes0 = boxes[:, :, :, 0]
+        boxes1 = boxes[:, :, :, 1]
+        boxes2 = boxes[:, :, :, 2]
+        boxes3 = boxes[:, :, :, 3]
 
-    # loss funtion
-    subX = tf.sub(boxes0, x_)
-    subY = tf.sub(boxes1, y_)
-    subW = tf.sub(tf.sqrt(boxes2), tf.sqrt(w_))
-    subH = tf.sub(tf.sqrt(boxes3), tf.sqrt(h_))
-    subC = tf.sub(probs, C_)
-    subP = tf.sub(class_probs, p_)
-    loss = tf.add_n((tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subX, subX)))),
-                     tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subY, subY)))),
-                     tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subW, subW)))),
-                     tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subH, subH)))),
-                     tf.reduce_sum(tf.mul(obj, tf.mul(subC, subC))),
-                     tf.mul(self.lambdanoobj, tf.reduce_sum(tf.mul(noobj, tf.mul(subC, subC)))),
-                     tf.reduce_sum(tf.mul(objI, tf.reduce_sum(tf.mul(subP, subP), axis=2, keep_dims=True)))))
-    global_step = tf.Variable(0, trainable=False)
-    starter_learning_rate = 0.001
-    decay = 0.0005
-    end_learning_rate = 0.01
+        # the label of image
+        x_ = tf.placeholder(tf.float32, [7, 7, 2])  # the first dimension (None) will index the images
+        y_ = tf.placeholder(tf.float32, [7, 7, 2])
+        w_ = tf.placeholder(tf.float32, [7, 7, 2])
+        h_ = tf.placeholder(tf.float32, [7, 7, 2])
+        C_ = tf.placeholder(tf.float32, [7, 7, 2])
+        p_ = tf.placeholder(tf.float32, [7, 7, 20])
+        obj = tf.placeholder(tf.float32, [7, 7, 2])
+        objI = tf.placeholder(tf.float32, [7, 7])
+        noobj = tf.placeholder(tf.float32, [7, 7, 2])
 
-    # Different case of learning rate
-    def lr1():
-        return tf.train.polynomial_decay(starter_learning_rate, global_step, decay, end_learning_rate=end_learning_rate,
-                                         power=1.0)
+        # loss funtion
+        subX = tf.sub(boxes0, x_)
+        subY = tf.sub(boxes1, y_)
+        subW = tf.sub(tf.sqrt(boxes2), tf.sqrt(w_))
+        subH = tf.sub(tf.sqrt(boxes3), tf.sqrt(h_))
+        subC = tf.sub(scales, C_)
+        subP = tf.sub(class_probs, p_)
+        self.loss = tf.add_n((tf.mul(self.lambdacoord,tf.reduce_sum(tf.mul(obj,tf.mul(subX, subX)))),
+                         tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subY, subY)))),
+                         tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subW, subW)))),
+                         tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(obj, tf.mul(subH, subH)))),
+                         tf.reduce_sum(tf.mul(obj, tf.mul(subC, subC))),
+                         tf.mul(self.lambdanoobj, tf.reduce_sum(tf.mul(noobj, tf.mul(subC, subC)))),
+                         tf.reduce_sum(tf.mul(objI, tf.reduce_sum(tf.mul(subP, subP), axis=2, keep_dims=True)))))
+        global_step = tf.Variable(0, trainable=False)
+        starter_learning_rate = 0.001
+        decay = 0.0005
+        end_learning_rate = 0.01
 
-    def lr2():
-        global_step.assign_add(1)
-        return tf.constant(0.01)
+        # Different case of learning rate
+        def lr1():
+            return tf.train.polynomial_decay(starter_learning_rate, global_step, decay, end_learning_rate=end_learning_rate,
+                                             power=1.0)
 
-    def lr3():
-        global_step.assign_add(1)
-        return tf.constant(0.001)
+        def lr2():
+            global_step.assign_add(1)
+            return tf.constant(0.01)
 
-    def lr4():
-        global_step.assign_add(1)
-        return tf.constant(0.0001)
+        def lr3():
+            global_step.assign_add(1)
+            return tf.constant(0.001)
 
-    lr = tf.case({tf.less_equal(global_step, 18): lr1,
-                  tf.logical_and(tf.greater(global_step, 18), tf.less_equal(global_step, 93)): lr2,
-                  tf.logical_and(tf.greater(global_step, 93), tf.less_equal(global_step, 123)): lr3,
-                  tf.logical_and(tf.greater(global_step, 123)): lr4}, exclusive=True)
-    self.train_step = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9)
-    self.sess = tf.Session()
-    self.sess.run(tf.initialize_all_variables())
-    self.saver = tf.train.Saver()
-    self.saver.restore(self.sess, self.weights_file)
+        def lr4():
+            global_step.assign_add(1)
+            return tf.constant(0.0001)
+
+        lr = tf.case({tf.less_equal(global_step, 18): lr1,
+                      tf.logical_and(tf.greater(global_step, 18), tf.less_equal(global_step, 93)): lr2,
+                      tf.logical_and(tf.greater(global_step, 93), tf.less_equal(global_step, 123)): lr3,
+                      tf.greater(global_step, 123): lr4},lr4, exclusive=True)
+        self.train_step = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(self.loss)
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
 
 
-def train_step(self, i, update_test_data, update_train_data):
-    in_dict = {self.x: none, self.keep_prob: 0.5}  # TODO need to create the loop for the training and test
-    self.sess.run(self.train_step, in_dict)
 
-    train_l = []
-    test_l = []
+    def training_step(self, i, update_test_data, update_train_data):
+        in_dict = {self.x: None, self.keep_prob: 0.5}  # TODO need to create the loop for the training and test
+        self.sess.run(self.train_step, in_dict)
 
-    if update_train_data:
-        l = self.sess.run([loss], feed_dict={in_dict})
-        train_l.append(l)
+        train_l = []
+        test_l = []
 
-    if update_test_data:
-        l = self.sess.run([loss],
-                          feed_dict={in_dict})
-        print("\r", i, "loss : ", l)
-        test_l.append(l)
+        if update_train_data:
+            l = self.sess.run(self.loss, feed_dict={in_dict})
+            train_l.append(l)
 
-    return (train_l, test_l)
+        if update_test_data:
+            l = self.sess.run(self.loss,
+                              feed_dict={in_dict})
+            print("\r", i, "loss : ", l)
+            test_l.append(l)
+
+        return (train_l, test_l)
 
 
-def train(self):
-    train_l = []
-    test_l = []
+    def train(self):
+        train_l = []
+        test_l = []
 
-    training_iter = 10000
-    epoch_size = 100
-    for i in range(training_iter):
-        test = False
-        if i % epoch_size == 0:
-            test = True
-        l, tl = self.training_step(i, test, test)
-        train_l += l
-        test_l += tl
-    print("train loss")
-    print(train_l)
-    print("test loss")
-    print(test_l)
+        training_iter = 10000
+        epoch_size = 100
+        for i in range(training_iter):
+            test = False
+            if i % epoch_size == 0:
+                test = True
+            l, tl = self.training_step(i, test, test)
+            train_l += l
+            test_l += tl
+        print("train loss")
+        print(train_l)
+        print("test loss")
+        print(test_l)
 
 
 if __name__ == '__main__':
