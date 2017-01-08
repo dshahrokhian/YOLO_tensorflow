@@ -7,12 +7,11 @@ import matplotlib.pyplot as plt
 import skimage
 from skimage import io
 
-
-root_dir = '/Users/mprat/personal/VOCdevkit/VOCdevkit/VOC2012/'
+# Change root_dir depending on where you have stored the dataset
+root_dir = '/home/dani/Files/Data/VOC2012/'
 img_dir = os.path.join(root_dir, 'JPEGImages/')
-ann_dir = os.path.join(root_dir, 'Annotations')
+ann_dir = os.path.join(root_dir, 'Annotations/')
 set_dir = os.path.join(root_dir, 'ImageSets', 'Main')
-
 
 def list_image_sets():
     """
@@ -26,7 +25,6 @@ def list_image_sets():
         'motorbike', 'person', 'pottedplant',
         'sheep', 'sofa', 'train',
         'tvmonitor']
-
 
 def imgs_from_category(cat_name, dataset):
     """
@@ -47,7 +45,6 @@ def imgs_from_category(cat_name, dataset):
         names=['filename', 'true'])
     return df
 
-
 def imgs_from_category_as_list(cat_name, dataset):
     """
     Get a list of filenames for images in a particular category
@@ -64,7 +61,6 @@ def imgs_from_category_as_list(cat_name, dataset):
     df = df[df['true'] == 1]
     return df['filename'].values
 
-
 def annotation_file_from_img(img_name):
     """
     Given an image name, get the annotation file for that image
@@ -77,7 +73,6 @@ def annotation_file_from_img(img_name):
         string: file path to the annotation file
     """
     return os.path.join(ann_dir, img_name) + '.xml'
-
 
 def load_annotation(img_filename):
     """
@@ -96,7 +91,6 @@ def load_annotation(img_filename):
         xml = f.readlines()
     xml = ''.join([line.strip('\t') for line in xml])
     return BeautifulSoup(xml)
-
 
 # TODO: implement this
 def get_all_obj_and_box(objname, img_set):
@@ -127,7 +121,6 @@ def load_img(img_filename):
         img = img[:, :, :3]
     return img
 
-
 def load_imgs(img_filenames):
     """
     Load a bunch of images from disk as np array.
@@ -141,7 +134,6 @@ def load_imgs(img_filenames):
             a numpy array of float32
     """
     return np.array([load_img(fname) for fname in img_filenames])
-
 
 def _load_data(category, data_type=None):
     """
@@ -186,7 +178,6 @@ def _load_data(category, data_type=None):
             data, columns=['fname', 'xmin', 'ymin', 'xmax', 'ymax'])
         df.to_csv(filename)
         return df
-
 
 def get_image_url_list(category, data_type=None):
     """

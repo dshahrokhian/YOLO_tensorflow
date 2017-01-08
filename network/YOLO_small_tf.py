@@ -6,10 +6,10 @@ import sys
 
 class YOLO_TF:
 	'''
-    Class representing the operations requited for building the YOLO neural network.
+    Class representing the operations required for building the YOLO neural network.
     '''
 
-    # Control variables
+	# Control variables
 	fromfile = None
 	tofile_img = 'test/output.jpg'
 	tofile_txt = 'test/output.txt'

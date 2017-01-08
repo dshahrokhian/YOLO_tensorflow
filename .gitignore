@@ -1,4 +1,7 @@
 .project
 .pydevproject
 .settings
-
+data_parsing/__pycache__/
+data_parsing/build
+data_parsing/dist
+data_parsing/voc_utils.egg-info
