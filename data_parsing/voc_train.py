@@ -41,7 +41,11 @@ def _getXYWHC(objects, img_width, img_height):
         center_y = (ymin + ymax) / 2
                 
         cell_x, cell_y = getCell([center_x,center_y], img_width, img_height)
-        grid[cell_x][cell_y] = [center_x, center_y, width, height, obj_class]
+        
+        if (grid[cell_x][cell_y] is None):
+            grid[cell_x][cell_y] = [center_x, center_y, width, height, obj_class]
+        else:
+            grid[cell_x][cell_y] = [grid[cell_x][cell_y], [center_x, center_y, width, height, obj_class]]
 
     return grid
 
@@ -53,7 +57,3 @@ def getCell(point, width, height):
     col = math.floor(point[1] / height * grid_size)
 
     return [row,col]
-
-if __name__ == '__main__':
-    #get_training_data("2007_000027")
-    #training("aeroplane")
