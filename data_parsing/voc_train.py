@@ -8,8 +8,10 @@ Utils required for training a ConvNet with the VOC dataset.
 
 import voc_utils as voc
 import math
+from __future__ import division
 
 grid_size = 7
+network_reshape = 448 # The convolutional neural network reduces the image size to 448x448
 
 def get_training_data(img_filename):
     annotation = voc.load_annotation(img_filename)
@@ -39,6 +41,9 @@ def _getXYWHC(objects, img_width, img_height):
         height = ymax - ymin
         center_x = (xmin + xmax) / 2
         center_y = (ymin + ymax) / 2
+        #bbox = reshape([center_x,center_y,width,height],
+        #               img_width, img_height, 
+        #               network_reshape, network_reshape)
                 
         cell_x, cell_y = getCell([center_x,center_y], img_width, img_height)
         
@@ -57,3 +62,14 @@ def getCell(point, width, height):
     col = int(math.floor(point[1] / height * grid_size))
 
     return [row,col]
+    
+def reshape(bbox, original_width, original_height, new_width, new_height):
+    
+    w_ratio = new_width / original_width
+    h_ratio = new_height / original_height
+    
+    return [bbox[0] * w_ratio, 
+            bbox[1] * h_ratio, 
+            bbox[2] * w_ratio, 
+            bbox[3] * h_ratio]
+    
