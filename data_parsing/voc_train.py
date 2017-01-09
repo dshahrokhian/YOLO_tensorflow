@@ -8,7 +8,6 @@ Utils required for training a ConvNet with the VOC dataset.
 
 import voc_utils as voc
 import math
-from __future__ import division
 
 grid_size = 7
 network_reshape = 448 # The convolutional neural network reduces the image size to 448x448
@@ -39,14 +38,15 @@ def _getXYWHC(objects, img_width, img_height):
         
         width = xmax - xmin
         height = ymax - ymin
-        center_x = (xmin + xmax) / 2
-        center_y = (ymin + ymax) / 2
+        center_x = float(xmin + xmax) / 2
+        center_y = float(ymin + ymax) / 2
+
         #bbox = reshape([center_x,center_y,width,height],
         #               img_width, img_height, 
         #               network_reshape, network_reshape)
                 
         cell_x, cell_y = getCell([center_x,center_y], img_width, img_height)
-        
+
         if (grid[cell_x][cell_y] is None):
             grid[cell_x][cell_y] = [[center_x, center_y, width, height, obj_class]]
         else:
@@ -58,8 +58,8 @@ def getCell(point, width, height):
     '''
     Determines where a point falls within the (grid_size)x(grid_size) grid 
     '''
-    row = int(math.floor(point[0] / width * grid_size))
-    col = int(math.floor(point[1] / height * grid_size))
+    col = int(math.floor(point[0] / width * (grid_size-1)))
+    row = int(math.floor(point[1] / height * (grid_size-1)))
 
     return [row,col]
     
