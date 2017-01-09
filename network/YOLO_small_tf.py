@@ -293,8 +293,6 @@ class YOLO_TF:
         boxes2 = boxes[:,:, :, :, 2]
         boxes3 = boxes[:,:, :, :, 3]
 
-
-
         # loss funtion
         self.subX = tf.sub(boxes0, self.x_)
         #self.subX = tf.constant(np.zeros(nb_image,7,7,2))
@@ -345,8 +343,7 @@ class YOLO_TF:
         self.sess.run(tf.global_variables_initializer())
 
     def build_label (self):
-            img_filenames = voc_utils.imgs_from_category_as_list("bird", "train")[0:64]
-            #img_filenames=["2008_000197"]
+            img_filenames = voc_utils.imgs_from_category_as_list("bird", "train")
             X_global=[]
             Y_global=[]
             W_global=[]
@@ -369,7 +366,6 @@ class YOLO_TF:
                 objI = np.zeros([7,7])
                 noobj = np.ones([7,7,2])
                 img = voc_utils.load_img(img_filename)
-                print(img_filename)
                 for i,j in itertools.product(range(0,7),range(0,7)):
                     if prelabel[i][j] is not None:
                         index=0
@@ -400,7 +396,6 @@ class YOLO_TF:
                 inputs = np.zeros((1, 448, 448, 3), dtype='float32')
                 inputs[0] = (img_resized_np / 255.0) * 2.0 - 1.0
                 Image.append(inputs[0])
-                #self.label.append({self.x:inputs,self.x_:x,self.y_:y,self.w_:w,self.h_:h,self.C_:C,self.p_:p,self.obj:obj,self.objI:objI,self.noobj:noobj,self.keep_prob: 0.8})
             X_global=np.array(X_global)
             Y_global=np.array(Y_global)
             W_global=np.array(W_global)
@@ -411,40 +406,54 @@ class YOLO_TF:
             objI_global=np.array(objI_global)
             noobj_global=np.array(noobj_global)
             Image=np.array(Image)
-            print(P_global.shape)
             self.label={self.x:Image,self.x_:X_global,self.y_:Y_global,self.w_:W_global,self.h_:H_global,self.C_:C_global,self.p_:P_global,self.obj:obj_global,self.objI:objI_global,self.noobj:noobj_global,self.keep_prob: 0.5}
 
-    def next_batch(self,batch_size, num_examples, index_in_epoch=index_in_epoch,
-                   epochs_completed=epochs_completed):
+    def next_batch(self,batch_size, num_examples):
         """Return the next `batch_size` examples from this data set."""
         labels = self.label
-        start = index_in_epoch
-        index_in_epoch += batch_size
-        if index_in_epoch > num_examples:
+        start = self.index_in_epoch
+        self.index_in_epoch += batch_size
+        if self.index_in_epoch > num_examples:
             # Finished epoch
-            epochs_completed += 1
+            self.epochs_completed += 1
             # Shuffle the data
-            #perm = numpy.arange(num_examples)
-            #numpy.random.shuffle(perm)
-            #labels = labels[perm]
+            perm = np.arange(num_examples)
+            np.random.shuffle(perm)
+            self.label[self.x]=self.label[self.x][perm,:,:,:]
+            self.label[self.x_] = self.label[self.x_][perm, :, :, :]
+            self.label[self.y_]=self.label[self.y_][perm,:,:,:]
+            self.label[self.w_] = self.label[self.w_][perm, :, :, :]
+            self.label[self.h_] = self.label[self.h_][perm, :, :, :]
+            self.label[self.C_] = self.label[self.C_][perm, :, :, :]
+            self.label[self.p_] = self.label[self.p_][perm, :, :, :]
+            self.label[self.obj] = self.label[self.obj][perm, :, :, :]
+            self.label[self.objI] = self.label[self.objI][perm, :, :]
+            self.label[self.noobj] = self.label[self.noobj][perm, :, :, :]
             # Start next epoch
             start = 0
-            index_in_epoch = batch_size
+            self.index_in_epoch = batch_size
             assert batch_size <= num_examples
-        end = index_in_epoch
-        return  self.label[start:end], index_in_epoch, epochs_completed
+        end = self.index_in_epoch
+        return  {self.x:self.label[self.x][start:end,:,:,:],
+                 self.x_: self.label[self.x_][start:end, :, :, :],
+                 self.y_: self.label[self.y_][start:end, :, :, :],
+                 self.w_: self.label[self.w_][start:end, :, :, :],
+                 self.h_: self.label[self.h_][start:end, :, :, :],
+                 self.C_: self.label[self.C_][start:end, :, :, :],
+                 self.p_: self.label[self.p_][start:end, :, :, :],
+                 self.obj: self.label[self.obj][start:end, :, :, :],
+                 self.objI: self.label[self.objI][start:end, :, :],
+                 self.noobj: self.label[self.noobj][start:end, :, :, :],
+                 self.keep_prob:0.5}
 
 
 
     def training_step(self, i, update_test_data, update_train_data):
         # TODO need to create the loop for the training and test
-        #dict,self.index_in_epoch,self.epochs_completed=self.next_batch(10,num_examples=len(self.label))
+        dict=self.next_batch(64,num_examples=len(self.label[self.x]))
+        print(dict[self.x][0,0,0,0])
 
-        #for index in range(len(dict)):t
-        train,l,output,x,y,w,h,c,p,lossx,lossy,lossw,lossh,lossCobj,lossCnobj,lossp=self.sess.run([self.train_step,self.loss,self.fc_32,
-                                          self.subX,self.subY,self.subW,self.subH,self.subC,self.subP,
-                                                      self.lossX,self.lossY,self.lossW,self.lossH,self.lossCObj,self.lossCNobj,self.lossP], self.label)
-        print("\r", i, "loss : ", l)
+        self.sess.run(self.train_step, dict)
 
         train_l = []
         test_l = []
@@ -454,11 +463,7 @@ class YOLO_TF:
             train_l.append(l)
 
         if update_test_data:
-            train, l, output, x, y, w, h, c, p, lossx, lossy, lossw, lossh, lossCobj, lossCnobj, lossp, weight = self.sess.run(
-                [self.train_step, self.loss, self.fc_32,
-                 self.subX, self.subY, self.subW, self.subH, self.subC, self.subP,
-                 self.lossX, self.lossY, self.lossW, self.lossH, self.lossCObj, self.lossCNobj, self.lossP,
-                 self.weight], self.label)
+            l= self.sess.run(self.loss, self.label)
             print("\r", i, "loss : ", l)
             test_l.append(l)
 
@@ -470,7 +475,7 @@ class YOLO_TF:
         test_l = []
         self.build_label()
         training_iter = 100
-        epoch_size = 5
+        epoch_size = 2
         for i in range(training_iter):
             test = False
             if i % epoch_size == 0:
