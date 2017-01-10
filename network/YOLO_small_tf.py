@@ -22,6 +22,8 @@ class YOLO_TF:
     filewrite_txt = False
     disp_console = True
     weights_file = 'weights/YOLO_small.ckpt'
+
+    # algorihtm variable
     alpha = 0.1
     threshold = 0.2
     iou_threshold = 0.5
@@ -30,23 +32,27 @@ class YOLO_TF:
     grid_size = 7
     classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
                "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
+
+    w_img = 640
+    h_img = 480
+
     # training variaible
     training = False
     keep_prob = tf.placeholder(tf.float32)
     lambdacoord = 5.0
     lambdanoobj = 0.5
-    label =[]
+    label = None
+    label = None
     index_in_epoch = 0
     epochs_completed = 0
 
-    w_img = 640
-    h_img = 480
+
 
     def __init__(self, argvs=[]):
         self.argv_parser(argvs)
         self.build_networks()
         if self.training:
-            self.build_training
+            self.build_training()
             self.train()
         if self.fromfile is not None: self.detect_from_file(self.fromfile)
 
@@ -94,14 +100,14 @@ class YOLO_TF:
         self.conv_22 = self.conv_layer(22, self.conv_21, 1024, 3, 1)
         self.conv_23 = self.conv_layer(23, self.conv_22, 512, 1, 1)
         self.conv_24 = self.conv_layer(24, self.conv_23, 1024, 3, 1)
-        self.conv_25 = self.conv_layer(25, self.conv_24, 1024, 3, 1)
-        self.conv_26 = self.conv_layer(26, self.conv_25, 1024, 3, 2)
-        self.conv_27 = self.conv_layer(27, self.conv_26, 1024, 3, 1)
-        self.conv_28 = self.conv_layer(28, self.conv_27, 1024, 3, 1)
-        self.fc_29 = self.fc_layer(29, self.conv_28, 512, flat=True, linear=False)
-        self.fc_30 = self.fc_layer(30, self.fc_29, 4096, flat=False, linear=False)
+        self.conv_25 = self.conv_layer(25, self.conv_24, 1024, 3, 1,trainable=self.training)
+        self.conv_26 = self.conv_layer(26, self.conv_25, 1024, 3, 2,trainable=self.training)
+        self.conv_27 = self.conv_layer(27, self.conv_26, 1024, 3, 1,trainable=self.training)
+        self.conv_28 = self.conv_layer(28, self.conv_27, 1024, 3, 1,trainable=self.training)
+        self.fc_29 = self.fc_layer(29, self.conv_28, 512, flat=True, linear=False,trainable=self.training)
+        self.fc_30 = self.fc_layer(30, self.fc_29, 4096, flat=False, linear=False,trainable=self.training)
         self.drop_31 = self.dropout(31, self.fc_30)
-        self.fc_32 = self.fc_layer(32, self.drop_31, 1470, flat=False, linear=True,trainable=True)
+        self.fc_32 = self.fc_layer(32, self.drop_31, 1470, flat=False, linear=True,trainable=self.training)
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
@@ -170,7 +176,6 @@ class YOLO_TF:
     def detect_from_file(self, filename):
         if self.disp_console: print 'Detect from ' + filename
         img = cv2.imread(filename)
-        # img = misc.imread(filename)
         self.detect_from_cvmat(img)
 
     def interpret_output(self, output):
@@ -267,7 +272,6 @@ class YOLO_TF:
         return intersection / (box1[2] * box1[3] + box2[2] * box2[3] - intersection)
 
 
-    @property
     def build_training(self):  # TODO add training function!
         # the label of image
         self.x_ = tf.placeholder(tf.float32, [None,7, 7, 2])  # the first dimension (None) will index the images
@@ -295,7 +299,6 @@ class YOLO_TF:
 
         # loss funtion
         self.subX = tf.sub(boxes0, self.x_)
-        #self.subX = tf.constant(np.zeros(nb_image,7,7,2))
         self.subY = tf.sub(boxes1, self.y_)
         self.subW = tf.sub(tf.sqrt(tf.abs(boxes2)), tf.sqrt(self.w_))
         self.subH = tf.sub(tf.sqrt(tf.abs(boxes3)), tf.sqrt(self.h_))
@@ -307,65 +310,44 @@ class YOLO_TF:
         self.lossH=tf.mul(self.lambdacoord, tf.reduce_sum(tf.mul(self.obj, tf.mul(self.subH, self.subH)),axis=[1,2,3]))
         self.lossCObj=tf.reduce_sum(tf.mul(self.obj, tf.mul(self.subC, self.subC)),axis=[1,2,3])
         self.lossCNobj=tf.mul(self.lambdanoobj, tf.reduce_sum(tf.mul(self.noobj, tf.mul(self.subC, self.subC)),axis=[1,2,3]))
-        lossP1 = tf.reduce_sum(tf.mul(self.subP, self.subP), axis=3)
-
-        self.lossP=tf.reduce_sum(tf.mul(self.objI,lossP1) ,axis=[1,2])
+        self.lossP=tf.reduce_sum(tf.mul(self.objI,tf.reduce_sum(tf.mul(self.subP, self.subP), axis=3)) ,axis=[1,2])
         self.loss = tf.add_n((self.lossX,self.lossY,self.lossW,self.lossH,self.lossCObj,self.lossCNobj,self.lossP))
         self.loss = tf.reduce_mean(self.loss)
+
+        #variable for the training
         global_step = tf.Variable(0, trainable=False)
         starter_learning_rate = 0.001
         decay = 0.0005
         end_learning_rate = 0.01
+        self.epoch=tf.placeholder(tf.int32)
 
         # Different case of learning rate
         def lr1():
             return tf.train.polynomial_decay(starter_learning_rate, global_step, decay, end_learning_rate=end_learning_rate,
                                              power=1.0)
-
         def lr2():
-            global_step.assign_add(1)
             return tf.constant(0.01)
-
         def lr3():
-            global_step.assign_add(1)
             return tf.constant(0.001)
-
         def lr4():
-            global_step.assign_add(1)
             return tf.constant(0.0001)
+        lr = tf.case({tf.less_equal(self.epoch, 1): lr1,
+                      tf.logical_and(tf.greater(self.epoch, 76), tf.less_equal(self.epoch, 106)): lr2,
+                      tf.logical_and(tf.greater(self.epoch, 106), tf.less_equal(self.epoch, 136)): lr3,
+                      tf.greater(self.epoch, 136): lr4},lr4, exclusive=True)
 
-        lr = tf.case({tf.less_equal(global_step, 18): lr1,
-                      tf.logical_and(tf.greater(global_step, 18), tf.less_equal(global_step, 93)): lr2,
-                      tf.logical_and(tf.greater(global_step, 93), tf.less_equal(global_step, 123)): lr3,
-                      tf.greater(global_step, 123): lr4},lr4, exclusive=True)
         self.train_step = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(self.loss,global_step=global_step)
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
 
-    def build_label (self):
-            img_filenames = voc_utils.imgs_from_category_as_list("bird", "train")
-            X_global=[]
-            Y_global=[]
-            W_global=[]
-            H_global=[]
-            C_global=[]
-            P_global=[]
-            obj_global=[]
-            objI_global=[]
-            noobj_global=[]
-            Image=[]
+    def build_label (self,img_filenames,epoch):
+            X_global=[]; Y_global=[]; W_global=[]; H_global=[]; C_global=[]; P_global=[]; obj_global=[]; objI_global=[];
+            noobj_global=[];Image=[]
             for img_filename in img_filenames:
                 prelabel=voc_train.get_training_data(img_filename)
-                x = np.zeros([7,7,2])
-                y = np.zeros([7,7,2])
-                w = np.zeros([7,7,2])
-                h = np.zeros([7,7,2])
-                C = np.zeros([7,7,2])
-                p = np.zeros([7,7,20])
-                obj = np.zeros([7,7,2])
-                objI = np.zeros([7,7])
-                noobj = np.ones([7,7,2])
-                img = voc_utils.load_img(img_filename)
+                x = np.zeros([7,7,2]); y = np.zeros([7,7,2]); w = np.zeros([7,7,2]); h = np.zeros([7,7,2])
+                C = np.zeros([7,7,2]); p = np.zeros([7,7,20]); obj = np.zeros([7,7,2]); objI = np.zeros([7,7])
+                noobj = np.ones([7,7,2]); img = voc_utils.load_img(img_filename)
                 for i,j in itertools.product(range(0,7),range(0,7)):
                     if prelabel[i][j] is not None:
                         index=0
@@ -374,43 +356,31 @@ class YOLO_TF:
                             y[i][j][index] = (float(prelabel[i][ j][ index][ 1])/len(img[0]))*7-j
                             w[i][j][index] = np.sqrt(prelabel[i][ j][ index][ 2])/len(img)*7
                             h[i][j][index] = np.sqrt(prelabel[i][ j][ index][ 3])/len(img[0])
-                            C[i][j][index] = self.classes.index(prelabel[i][ j][ index][ 4])
-                            p[i][j][C[i][j][index]] = 1.0/len(prelabel[i][j])
+                            C[i][j][index] = 1.0
+                            p[i][j][self.classes.index(prelabel[i][ j][ index][ 4])] = 1.0/float(len(prelabel[i][j]))
                             obj[i][j][index] = 1.0
                             objI[i][j] = 1.0
                             noobj[i][j][ index]=0.0
                             index=index+1
-                X_global.append(x)
-                Y_global.append(y)
-                W_global.append(w)
-                H_global.append(h)
-                C_global.append(C)
-                P_global.append(p)
-                obj_global.append(obj)
-                objI_global.append(objI)
-                noobj_global.append(noobj)
+                X_global.append(x); Y_global.append(y); W_global.append(w); H_global.append(h); C_global.append(C)
+                P_global.append(p); obj_global.append(obj); objI_global.append(objI); noobj_global.append(noobj)
 
+                #resize the image
                 img_resized = cv2.resize(img, (448, 448))
                 img_RGB = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
                 img_resized_np = np.asarray(img_RGB)
                 inputs = np.zeros((1, 448, 448, 3), dtype='float32')
                 inputs[0] = (img_resized_np / 255.0) * 2.0 - 1.0
                 Image.append(inputs[0])
-            X_global=np.array(X_global)
-            Y_global=np.array(Y_global)
-            W_global=np.array(W_global)
-            H_global=np.array(H_global)
-            C_global=np.array(C_global)
-            P_global=np.array(P_global)
-            obj_global=np.array(obj_global)
-            objI_global=np.array(objI_global)
-            noobj_global=np.array(noobj_global)
+            X_global=np.array(X_global); Y_global=np.array(Y_global); W_global=np.array(W_global)
+            H_global=np.array(H_global); C_global=np.array(C_global); P_global=np.array(P_global)
+            obj_global=np.array(obj_global); objI_global=np.array(objI_global); noobj_global=np.array(noobj_global)
             Image=np.array(Image)
-            self.label={self.x:Image,self.x_:X_global,self.y_:Y_global,self.w_:W_global,self.h_:H_global,self.C_:C_global,self.p_:P_global,self.obj:obj_global,self.objI:objI_global,self.noobj:noobj_global,self.keep_prob: 0.5}
+            return {self.x:Image,self.x_:X_global,self.y_:Y_global,self.w_:W_global,self.h_:H_global,self.C_:C_global,
+                    self.p_:P_global,self.obj:obj_global,self.objI:objI_global,self.noobj:noobj_global,
+                    self.keep_prob: 0.5,self.epoch:epoch}
 
     def next_batch(self,batch_size, num_examples):
-        """Return the next `batch_size` examples from this data set."""
-        labels = self.label
         start = self.index_in_epoch
         self.index_in_epoch += batch_size
         if self.index_in_epoch > num_examples:
@@ -419,51 +389,33 @@ class YOLO_TF:
             # Shuffle the data
             perm = np.arange(num_examples)
             np.random.shuffle(perm)
-            self.label[self.x]=self.label[self.x][perm,:,:,:]
-            self.label[self.x_] = self.label[self.x_][perm, :, :, :]
-            self.label[self.y_]=self.label[self.y_][perm,:,:,:]
-            self.label[self.w_] = self.label[self.w_][perm, :, :, :]
-            self.label[self.h_] = self.label[self.h_][perm, :, :, :]
-            self.label[self.C_] = self.label[self.C_][perm, :, :, :]
-            self.label[self.p_] = self.label[self.p_][perm, :, :, :]
-            self.label[self.obj] = self.label[self.obj][perm, :, :, :]
-            self.label[self.objI] = self.label[self.objI][perm, :, :]
-            self.label[self.noobj] = self.label[self.noobj][perm, :, :, :]
+            self.label=self.label[perm]
             # Start next epoch
             start = 0
             self.index_in_epoch = batch_size
             assert batch_size <= num_examples
         end = self.index_in_epoch
-        return  {self.x:self.label[self.x][start:end,:,:,:],
-                 self.x_: self.label[self.x_][start:end, :, :, :],
-                 self.y_: self.label[self.y_][start:end, :, :, :],
-                 self.w_: self.label[self.w_][start:end, :, :, :],
-                 self.h_: self.label[self.h_][start:end, :, :, :],
-                 self.C_: self.label[self.C_][start:end, :, :, :],
-                 self.p_: self.label[self.p_][start:end, :, :, :],
-                 self.obj: self.label[self.obj][start:end, :, :, :],
-                 self.objI: self.label[self.objI][start:end, :, :],
-                 self.noobj: self.label[self.noobj][start:end, :, :, :],
-                 self.keep_prob:0.5}
+        return  self.label[start:end]
+
 
 
 
     def training_step(self, i, update_test_data, update_train_data):
-        # TODO need to create the loop for the training and test
-        dict=self.next_batch(64,num_examples=len(self.label[self.x]))
-        print(dict[self.x][0,0,0,0])
 
-        self.sess.run(self.train_step, dict)
+        # TODO need to create the loop for the training and test
+        for nbatch in range(0,len(self.label)/64):
+            dict=self.build_label(self.next_batch(64,num_examples=len(self.label)),i)
+            self.sess.run(self.train_step, dict)
 
         train_l = []
         test_l = []
 
         if update_train_data:
-            l = self.sess.run(self.loss, feed_dict=self.label)
+            l = self.sess.run(self.loss, feed_dict=self.build_label(self.label,i))
             train_l.append(l)
 
         if update_test_data:
-            l= self.sess.run(self.loss, self.label)
+            l= self.sess.run(self.loss, feed_dict=self.build_label(self.label_test,i))
             print("\r", i, "loss : ", l)
             test_l.append(l)
 
@@ -473,14 +425,15 @@ class YOLO_TF:
     def train(self):
         train_l = []
         test_l = []
-        self.build_label()
-        training_iter = 100
-        epoch_size = 2
+        self.label=voc_utils.imgs_from_category_as_list("bird", "train")
+        self.label_test=voc_utils.imgs_from_category_as_list("bird", "val")
+        training_iter = 137
+        epoch_size = 5
         for i in range(training_iter):
             test = False
             if i % epoch_size == 0:
                 test = True
-            l, tl = self.training_step(i, False, test)
+            l, tl = self.training_step(i, test, test)
             train_l += l
             test_l += tl
         print("train loss")
