@@ -1,14 +1,16 @@
 # Tensorflow implementation of You Only Look Once
 
-*This project is still under development*
-
 An improvement of the implementation from @gliese581gg, with training, testing and video parsing.
 
 We also used the VOC tools to parse the VOC dataset from @mprat
 
-I know, I know: The code needs cleaning, bruh.
+I know, I know: the code needs cleaning, bruh.
 
 # Installation
+
+## Requirenments
+- Tensorflow
+- OpenCV2
 
 ## If you want to train the network yourself
 `cd data_parsing`
@@ -27,3 +29,6 @@ Put the 'YOLO_small.ckpt' in the 'weight' folder of downloaded code
 
 # Usage
 run `python network/Yolo_small_video -fromfile "name of file" -tofile_img "name file output"`
+
+# License
+Refeer to the LICENSE files of both *data_parsing* and *netowork*
