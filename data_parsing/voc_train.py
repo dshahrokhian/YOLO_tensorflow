@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-==========================================
-Utils required for training a ConvNet with the VOC dataset.
-==========================================
-"""
-# Author: Daniyal Shahrokhian <daniyal@kth.se>
-
 import voc_utils as voc
 import math
 
