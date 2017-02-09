@@ -12,6 +12,7 @@ I know, I know: The code needs cleaning, bruh.
 
 ## If you want to train the network yourself
 `cd data_parsing`
+
 `python data_parsing/setup.py install` or `python install develop` depending on what you will be doing
 
 ## If you want to use pre-trained weights
@@ -21,6 +22,7 @@ Put the 'YOLO_small.ckpt' in the 'weight' folder of downloaded code
 
 ## Uninstall (training)
 `cd data_parsing`
+
 `python setup.py develop --uninstall`
 
 # Usage
