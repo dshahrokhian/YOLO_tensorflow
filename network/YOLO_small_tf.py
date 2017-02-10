@@ -19,9 +19,11 @@ class YOLO_TF:
     tofile_txt = 'test/output.txt'
     imshow = True
     filewrite_img = False
+    writter = None
+    video = False
     filewrite_txt = False
     disp_console = True
-    weights_file = 'weights/YOLO_small.ckpt'
+    weights_file = 'network/weights/YOLO_small.ckpt'
 
     # algorihtm variable
     alpha = 0.1
@@ -54,10 +56,19 @@ class YOLO_TF:
         if self.training:
             self.build_training()
             self.train()
-        if self.fromfile is not None: self.detect_from_file(self.fromfile)
+        print("detection")
+        print(self.fromfile)
+        if self.fromfile is not None:
+            if self.video:
+                print("video")
+                self.detect_from_file_video(self.fromfile)
+            else:
+                print("image")
+                self.detect_from_file(self.fromfile)
 
     def argv_parser(self, argvs):
         for i in range(1, len(argvs), 2):
+            print(argvs[i])
             if argvs[i] == '-train': self.training = True;
             if argvs[i] == '-fromfile': self.fromfile = argvs[i + 1]
             if argvs[i] == '-tofile_img': self.tofile_img = argvs[i + 1]; self.filewrite_img = True
@@ -72,6 +83,10 @@ class YOLO_TF:
                     self.disp_console = True
                 else:
                     self.disp_console = False
+            if argvs[i] == '-video':
+                self.video = True
+                self.fromfile = argvs[i + 1]
+                self.filewrite_img = True
 
     def build_networks(self):
         if self.disp_console: print "Building YOLO_small graph..."
@@ -169,13 +184,60 @@ class YOLO_TF:
         in_dict = {self.x: inputs, self.keep_prob: 1.0}
         net_output = self.sess.run(self.fc_32, feed_dict=in_dict)
         self.result = self.interpret_output(net_output[0])
-        self.show_results(img, self.result)
         strtime = str(time.time() - s)
         if self.disp_console: print 'Elapsed time : ' + strtime + ' secs' + '\n'
+
+    def detect_from_file_video(self, filename):
+        if self.disp_console: print 'Detect from ' + filename
+        input = cv2.VideoCapture(filename)
+        while not input.isOpened():
+            input = cv2.VideoCapture(filename)
+            cv2.waitKey(1000)
+            print "Wait for the header"
+        if self.filewrite_img:
+            print input.get(cv2.CAP_PROP_FOURCC)
+            self.writter = cv2.VideoWriter(self.tofile_img,
+                                           int(input.get(cv2.CAP_PROP_FOURCC)),
+                                           int(input.get(cv2.CAP_PROP_FPS)),
+                                           (int(input.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                                            int(input.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+            while not self.writter.isOpened():
+                self.writter = cv2.VideoWriter(self.tofile_img, -1, input.get(cv2.CAP_PROP_FPS),
+                                               [input.get(cv2.CAP_PROP_FRAME_WIDTH), input.get(cv2.CAP_PROP_FRAME_HEIGHT),
+                                                True])
+                cv2.waitKey(1000)
+                print "Wait for the header Writter"
+        pos_frame = input.get(cv2.CAP_PROP_POS_FRAMES)
+        while True:
+            flag, frame = input.read()
+            if flag:
+                # The frame is ready and already captured
+                cv2.imshow('video', frame)
+                pos_frame = input.get(cv2.CAP_PROP_POS_FRAMES)
+                print str(pos_frame) + " frames"
+                self.detect_from_cvmat(frame)
+                self.show_results(frame, self.result)
+            else:
+                # The next frame is not ready, so we try to read it again
+                input.set(cv2.CAP_PROP_POS_FRAMES, pos_frame - 1)
+                print "frame is not ready"
+                # It is better to wait for a while for the next frame to be ready
+                cv2.waitKey(1000)
+            if cv2.waitKey(10) == 27:
+                break
+            if input.get(cv2.CAP_PROP_POS_FRAMES) == input.get(cv2.CAP_PROP_FRAME_COUNT):
+                # If the number of captured frames is equal to the total number of frames,
+                # we stop
+                break
+        input.release()
+        self.writter.release()
+        cv2.destroyAllWindows()
+
 
     def detect_from_file(self, filename):
         if self.disp_console: print 'Detect from ' + filename
         img = cv2.imread(filename)
+        self.show_results(filename, self.result)
         self.detect_from_cvmat(img)
 
     def interpret_output(self, output):
@@ -252,7 +314,10 @@ class YOLO_TF:
                     results[i][5]) + '\n')
         if self.filewrite_img:
             if self.disp_console: print '    image file writed : ' + self.tofile_img
-            cv2.imwrite(self.tofile_img, img_cp)
+            if self.video:
+                self.writter.write(img_cp)
+            else:
+                cv2.imwrite(self.tofile_img, img_cp)
         if self.imshow:
             cv2.imshow('YOLO_small detection', img_cp)
             cv2.waitKey(1)
