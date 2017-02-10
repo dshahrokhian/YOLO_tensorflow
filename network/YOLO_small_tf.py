@@ -72,6 +72,7 @@ class YOLO_TF:
             if argvs[i] == '-train': self.training = True;
             if argvs[i] == '-fromfile': self.fromfile = argvs[i + 1]
             if argvs[i] == '-tofile_img': self.tofile_img = argvs[i + 1]; self.filewrite_img = True
+            if argvs[i] == '-tofile_vid': self.tofile_img = argvs[i + 1]; self.filewrite_img = True
             if argvs[i] == '-tofile_txt': self.tofile_txt = argvs[i + 1]; self.filewrite_txt = True
             if argvs[i] == '-imshow':
                 if argvs[i + 1] == '1':
