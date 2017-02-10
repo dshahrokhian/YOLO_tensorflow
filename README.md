@@ -28,7 +28,11 @@ Put the 'YOLO_small.ckpt' in the 'weight' folder of downloaded code.
 `python setup.py develop --uninstall`
 
 # Usage
-`python network/Yolo_small_video -fromfile "name of file" -tofile_img "name file output"`
+## Images
+`python network/YOLO_small_tf.py -fromfile "name of input file" -tofile_img "name of output file"`
+
+## Videos
+`python network/YOLO_small_tf.py -video "name of input file" -tofile_vid "name of output file"`
 
 # License
 Refeer to the LICENSE files of both *data_parsing* and *network*.
