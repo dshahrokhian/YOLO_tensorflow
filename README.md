@@ -1,5 +1,7 @@
 # Tensorflow implementation of You Only Look Once
 
+[![Video](https://i.imgur.com/szGut1Z.png)](https://www.youtube.com/watch?v=EJy0EI3hfSg)
+
 An improvement of the implementation from @gliese581gg, with added training, testing and video parsing. We also used the VOC tools to parse the VOC dataset from @mprat.
 
 I know, I know: the code needs cleaning, bruh.
