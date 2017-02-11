@@ -4,6 +4,8 @@
 
 An improvement of the implementation from @gliese581gg, with added training, testing and video parsing. We also used the VOC tools to parse the VOC dataset from @mprat.
 
+Paper: https://arxiv.org/abs/1506.02640
+
 I know, I know: the code needs cleaning, bruh.
 
 # Installation
