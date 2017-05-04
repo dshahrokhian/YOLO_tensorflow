@@ -238,8 +238,8 @@ class YOLO_TF:
     def detect_from_file(self, filename):
         if self.disp_console: print 'Detect from ' + filename
         img = cv2.imread(filename)
-        self.show_results(filename, self.result)
         self.detect_from_cvmat(img)
+        self.show_results(filename, self.result)
 
     def interpret_output(self, output):
         probs = np.zeros((7, 7, 2, 20))
