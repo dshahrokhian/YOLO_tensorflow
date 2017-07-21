@@ -6,7 +6,7 @@ An improvement of the implementation from @gliese581gg, with added training, tes
 
 Paper: https://arxiv.org/abs/1506.02640
 
-I know, I know: the code needs cleaning, bruh.
+*Note:* the code needs cleaning (I didn't write it myself from scratch). I could not find the time and honestly, at this point, there are multiple better Open Source implementations of YOLOv2, so I don't see the point of doing it anymore.
 
 # Installation
 
